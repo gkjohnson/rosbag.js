@@ -7,7 +7,7 @@
 // @flow
 
 import { Buffer } from "buffer";
-import { MessageReader, parseMessageDefinition, rosPrimitiveTypes, Time } from "../index";
+import { MessageReader, parseMessageDefinition, rosPrimitiveTypes, TimeUtil } from "../index";
 import { type Callback } from "../types";
 import Bag from "../bag";
 import BagReader from "../BagReader";
@@ -16,26 +16,29 @@ import BagReader from "../BagReader";
 export class Reader {
   _blob: Blob;
   _size: number;
-  _fileReader: FileReader;
 
   constructor(blob: Blob) {
     this._blob = blob;
     this._size = blob.size;
-    this._fileReader = new FileReader();
   }
 
   // read length (bytes) starting from offset (bytes)
   // callback(err, buffer)
   read(offset: number, length: number, cb: Callback<Buffer>) {
-    const reader = this._fileReader;
-    if (reader.onload) {
-      return cb(new Error("Bag reader is already reading"));
-    }
-
+    const reader = new FileReader();
     reader.onload = function() {
       // $FlowFixMe - flow doesn't allow null
       reader.onload = null;
+      // $FlowFixMe - flow doesn't allow null
+      reader.onerror = null;
       setImmediate(cb, null, Buffer.from(reader.result));
+    };
+    reader.onerror = function() {
+      // $FlowFixMe - flow doesn't allow null
+      reader.onload = null;
+      // $FlowFixMe - flow doesn't allow null
+      reader.onerror = null;
+      setImmediate(cb, new Error(reader.error));
     };
     reader.readAsArrayBuffer(this._blob.slice(offset, offset + length));
   }
@@ -46,14 +49,18 @@ export class Reader {
   }
 }
 
-const open = async (file: File) => {
+const open = async (file: File | string) => {
+  if (!(file instanceof Blob)) {
+    throw new Error(
+      "Expected file to be a File or Blob. Make sure you are correctly importing the node or web version of Bag."
+    );
+  }
   const bag = new Bag(new BagReader(new Reader(file)));
   await bag.open();
   return bag;
 };
+Bag.open = open;
 
-const BrowserBag: typeof Bag & { open(file: File): Promise<Bag> } = (Bag: any);
-(BrowserBag: any).open = open;
-
-export { Time, BagReader, MessageReader, open, parseMessageDefinition, rosPrimitiveTypes };
-export default BrowserBag;
+export * from "../types";
+export { TimeUtil, BagReader, MessageReader, open, parseMessageDefinition, rosPrimitiveTypes };
+export default Bag;

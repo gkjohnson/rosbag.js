@@ -10,7 +10,7 @@ import int53 from "int53";
 
 import { extractFields, extractTime } from "./fields";
 import { MessageReader } from "./MessageReader";
-import { Time } from "./Time";
+import type { Time } from "./types";
 
 const readUInt64LE = (buffer: Buffer) => {
   return int53.readUInt64LE(buffer, 0);
@@ -36,8 +36,8 @@ export class BagHeader extends Record {
   constructor(fields: { [key: string]: Buffer }) {
     super(fields);
     this.indexPosition = readUInt64LE(fields.index_pos);
-    this.connectionCount = fields.conn_count.readInt16LE(0);
-    this.chunkCount = fields.chunk_count.readInt16LE(0);
+    this.connectionCount = fields.conn_count.readInt32LE(0);
+    this.chunkCount = fields.chunk_count.readInt32LE(0);
   }
 }
 
